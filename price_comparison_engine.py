@@ -6,6 +6,7 @@ from tkinter import (
     Entry,
     Button,
     W,
+    E,
     Toplevel,
     OptionMenu
 )
@@ -13,6 +14,9 @@ from bs4 import BeautifulSoup
 from difflib import get_close_matches
 import webbrowser
 from collections import defaultdict
+from io import BytesIO
+from PIL import ImageTk, Image
+
 
 root = Tk()
 root.geometry("320x150")
@@ -25,6 +29,10 @@ class Price_compare:
         self.var_ebay = StringVar()
         self.var_flipkart = StringVar()
         self.var_amzn = StringVar()
+        self.image_flip = None
+        self.image_amzn = None
+        self.image_flip_ref = None
+        self.image_amzn_ref = None
 
         label = Label(master, text='Enter the product')
         label.grid(row=0, column=0, padx=(30, 10), pady=30)
@@ -85,6 +93,7 @@ class Price_compare:
         except:
             self.variable_flip.set('Product not available')
 
+        # print(self.matches_amzn, self.variable_amzn)
         option_amzn = OptionMenu(self.window, self.variable_amzn, *self.matches_amzn)
         option_amzn.grid(row=3, column=1, sticky=W)
 
@@ -106,6 +115,17 @@ class Price_compare:
         button_flip_visit = Button(self.window, text='Visit Site', command=self.visit_flip, bd=4)
         button_flip_visit.grid(row=1, column=2, sticky=W)
 
+        image_flipkart_panel = Label(self.window, image=self.image_flip)
+        image_flipkart_panel.grid(row=2, column=0, padx=4)
+
+        image_amazon_panel = Label(self.window, image=self.image_amzn)
+        image_amazon_panel.grid(row=6, column=1, padx=4)
+
+        # lab_amz_t = Label(self.window, text='Not this? Try out suggeasdasdstions by clicking on the title')
+        # lab_amz_t.grid(row=6, column=2, padx=4)
+        # print("(" + str(self.image_flip.width()) + "," + str(self.image_flip.height()) + ")")
+        # print("(" + str(self.image_amzn.width()) + "," + str(self.image_amzn.height()) + ")")
+
     def price_flipkart(self, key):
         url_flip = 'https://www.flipkart.com/search?q=' + str(
             key) + '&marketplace=FLIPKART&otracker=start&as-show=on&as=off'
@@ -118,14 +138,17 @@ class Price_compare:
         self.opt_title_flip = StringVar()
         home = 'https://www.flipkart.com'
         for block in soup.find_all('div', {'class': '_2kHMtA'}):
-            title, price, link = None, 'Currently Unavailable', None
+            title, price, link, image = None, 'Currently Unavailable', None, None
             for heading in block.find_all('div', {'class': '_4rR01T'}):
                 title = heading.text
             for p in block.find_all('div', {'class': '_30jeq3 _1_WHN1'}):
                 price = p.text[1:]
             for l in block.find_all('a', {'class': '_1fQZEK'}):
                 link = home + l.get('href')
-            map[title] = [price, link]
+            for img in block.find_all('img', {'class': '_396cs4 _3exPp9'}):
+                image = img['src']
+            if title and link and image:
+                map[title] = [price, link, image]
 
         user_input = self.var.get().title()
         self.matches_flip = get_close_matches(user_input, map.keys(), 20, 0.1)
@@ -137,6 +160,9 @@ class Price_compare:
             self.opt_title_flip.set(self.matches_flip[0])
             self.var_flipkart.set(self.looktable_flip[self.matches_flip[0]][0] + '.00')
             self.link_flip = self.looktable_flip[self.matches_flip[0]][1]
+            url = self.looktable_flip[self.matches_flip[0]][2]
+            image_page = requests.get(url)
+            self.image_flip = ImageTk.PhotoImage(Image.open(BytesIO(image_page.content)))
         except IndexError:
             self.opt_title_flip.set('Product not found')
 
@@ -154,17 +180,20 @@ class Price_compare:
         self.opt_title = StringVar()
         self.soup = BeautifulSoup(plain_text, "html.parser")
         for html in self.soup.find_all('div', {'class': 'sg-col-inner'}):
-            title, link = None, None
+            title, price, link, image = None, 'Currently Unavailable', None, None
             for heading in html.find_all('span', {'class': 'a-size-medium a-color-base a-text-normal'}):
                 title = heading.text
             for p in html.find_all('span', {'class': 'a-price-whole'}):
                 price = p.text
             for l in html.find_all('a', {'class': 'a-link-normal a-text-normal'}):
                 link = home + l.get('href')
-            if title and link:
-                map[title] = [price, link]
+            for img in html.find_all('img', {'class': 's-image'}):
+                image = img['src']
+            if title and link and image:
+                map[title] = [price, link, image]
         user_input = self.var.get().title()
         self.matches_amzn = get_close_matches(user_input, list(map.keys()), 20, 0.01)
+        print('matches', type(self.matches_amzn))
         self.looktable = {}
         for title in self.matches_amzn:
             self.looktable[title] = map[title]
@@ -172,6 +201,9 @@ class Price_compare:
             self.opt_title.set(self.matches_amzn[0])
             self.var_amzn.set(self.looktable[self.matches_amzn[0]][0] + '.00')
             self.product_link = self.looktable[self.matches_amzn[0]][1]
+            url = self.looktable[self.matches_amzn[0]][2]
+            image_page = requests.get(url)
+            self.image_amzn = ImageTk.PhotoImage(Image.open(BytesIO(image_page.content)))
         except IndexError:
             self.opt_title.set("Product Not found!")
 
@@ -181,9 +213,17 @@ class Price_compare:
         product = self.opt_title.get()
         price, self.product_link = self.looktable[product][0], self.looktable[product][1]
         self.var_amzn.set(price + '.00')
+        url = self.looktable[product][2]
+        image_page = requests.get(url)
+        self.image_amzn = ImageTk.PhotoImage(Image.open(BytesIO(image_page.content)))
         flip_get = self.variable_flip.get()
         flip_price, self.link_flip = self.looktable_flip[flip_get][0], self.looktable_flip[flip_get][1]
         self.var_flipkart.set(flip_price + '.00')
+        url = self.looktable_flip[flip_get][2]
+        image_page = requests.get(url)
+        self.image_flip = ImageTk.PhotoImage(Image.open(BytesIO(image_page.content)))
+        # print("(" + str(self.image_flip.width()) + "," + str(self.image_flip.height()) + ")")
+        # print("(" + str(self.image_amzn.width()) + "," + str(self.image_amzn.height()) + ")")
 
     def visit_amzn(self):
         webbrowser.open(self.product_link)
