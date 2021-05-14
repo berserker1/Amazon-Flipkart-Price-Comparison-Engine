@@ -220,10 +220,16 @@ class Price_compare:
         flip_price, self.link_flip = self.looktable_flip[flip_get][0], self.looktable_flip[flip_get][1]
         self.var_flipkart.set(flip_price + '.00')
         url = self.looktable_flip[flip_get][2]
+        print(url)
         image_page = requests.get(url)
         self.image_flip = ImageTk.PhotoImage(Image.open(BytesIO(image_page.content)))
         # print("(" + str(self.image_flip.width()) + "," + str(self.image_flip.height()) + ")")
         # print("(" + str(self.image_amzn.width()) + "," + str(self.image_amzn.height()) + ")")
+        image_flipkart_panel = Label(self.window, image=self.image_flip)
+        image_flipkart_panel.grid(row=2, column=0, padx=4)
+
+        image_amazon_panel = Label(self.window, image=self.image_amzn)
+        image_amazon_panel.grid(row=6, column=1, padx=4)
 
     def visit_amzn(self):
         webbrowser.open(self.product_link)
