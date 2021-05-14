@@ -1,8 +1,15 @@
-
-
-from tkinter import *
-from bs4 import BeautifulSoup
 import requests
+from tkinter import (
+    StringVar,
+    Tk,
+    Label,
+    Entry,
+    Button,
+    W,
+    Toplevel,
+    OptionMenu
+)
+from bs4 import BeautifulSoup
 from difflib import get_close_matches
 import webbrowser
 from collections import defaultdict
@@ -10,17 +17,17 @@ from collections import defaultdict
 root = Tk()
 root.geometry("320x150")
 
+
 class Price_compare:
 
     def __init__(self, master):
-        
         self.var = StringVar()
         self.var_ebay = StringVar()
         self.var_flipkart = StringVar()
         self.var_amzn = StringVar()
 
         label = Label(master, text='Enter the product')
-        label.grid(row=0, column=0,padx=(30,10),pady=30)
+        label.grid(row=0, column=0, padx=(30, 10), pady=30)
 
         entry = Entry(master, textvariable=self.var)
         entry.grid(row=0, column=1)
@@ -161,9 +168,12 @@ class Price_compare:
         self.looktable = {}
         for title in self.matches_amzn:
             self.looktable[title] = map[title]
-        self.opt_title.set(self.matches_amzn[0])
-        self.var_amzn.set(self.looktable[self.matches_amzn[0]][0] + '.00')
-        self.product_link = self.looktable[self.matches_amzn[0]][1]
+        try:
+            self.opt_title.set(self.matches_amzn[0])
+            self.var_amzn.set(self.looktable[self.matches_amzn[0]][0] + '.00')
+            self.product_link = self.looktable[self.matches_amzn[0]][1]
+        except IndexError:
+            self.opt_title.set("Product Not found!")
 
     def search(self):
         amzn_get = self.variable_amzn.get()
@@ -180,6 +190,7 @@ class Price_compare:
 
     def visit_flip(self):
         webbrowser.open(self.link_flip)
+
 
 if __name__ == "__main__":
     c = Price_compare(root)
